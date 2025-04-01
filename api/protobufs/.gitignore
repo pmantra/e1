@@ -1,0 +1,4 @@
+/generated/python/maven_schemas/demo*
+/maven-schemas
+!/generated/python/maven_schemas/README.md
+!/generated/python/maven_schemas/__init__.py

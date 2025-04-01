@@ -1,0 +1,135 @@
+{% extends admin_base_template %}
+{% block head %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css"/>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.css"/>
+{% endblock %}
+
+{% block body %}
+
+    <h3>Transform Entries</h3>
+    {% if error %}
+    <div style="color: red; padding: 10px; border: 1px solid red; margin-bottom: 20px;">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    {% if entries %}
+        <div class="panel panel-info" style="width: fit-content;position: relative;">
+            <div class="panel-heading">
+                <h4 class="panel-title">Transform Entries
+                </h4>
+            </div>
+            <div id="collapse" class="panel-info">
+                <div class="panel-body">
+                    <table class="table table-striped" id="entry-table">
+                        <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Raw File Path</th>
+                            <th>Organization ID
+                                <select id="org-id-filter" class="form-control">
+                                    <option value="">All</option>
+                                    {% for entry in entries %}
+                                        <option value="{{ entry.org_id }}">{{ entry.org_id }}</option>
+                                    {% endfor %}
+                                </select>
+                            </th>
+                            <th scope="col">Directory Name</th>
+                            <th scope="col">Transformed File Path</th>
+                            <th>Status
+                                <select id="status-filter" class="form-control">
+                                    <option value="">All</option>
+                                    {% for entry in entries %}
+                                        <option value="{{ entry.status }}">{{ entry.status }}</option>
+                                    {% endfor %}
+                                </select>
+                            </th>
+                            <th scope="col">Raw Count</th>
+                            <th scope="col">Valid Count</th>
+                            <th scope="col">Error Count</th>
+                            <th scope="col">Orphan Count</th>
+                            <th scope="col">Error File Path</th>
+                            <th scope="col">Orphan File Path</th>
+                            <th scope="col">Details</th>
+                            <th scope="col">Created At</th>
+                            <th scope="col">Completed At</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %}
+                            <tr>
+                                <td><a href="{{ url_for('.details', entry_id=entry.id) }}">View Details</a></td>
+                                <td>
+                                    {% for url in entry.raw_file_path %}
+                                        <a href="{{ url }}" target="_blank" title="{{ url }}">{{ url[49:] }}</a><br>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ entry.org_id }}</td>
+                                <td>{{ entry.directory_name }}</td>
+                                <td>
+                                    {% for url in entry.transformed_file_path %}
+                                        <a href="{{ url }}" target="_blank" title="{{ url }}">{{ url[49:] }}</a><br>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ entry.status }}</td>
+                                <td>{{ entry.raw_count }}</td>
+                                <td>{{ entry.valid_count }}</td>
+                                <td>{{ entry.error_count }}</td>
+                                <td>{{ entry.orphan_count }}</td>
+                                <td>
+                                    {% for url in entry.error_file_path %}
+                                        <a href="{{ url }}" target="_blank" title="{{ url }}">{{ url[49:] }}</a><br>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% for url in entry.orphan_file_path %}
+                                        <a href="{{ url }}" target="_blank" title="{{ url }}">{{ url[49:] }}</a><br>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ entry.details }}</td>
+                                <td>{{ entry.created_at }}</td>
+                                <td>{{ entry.completed_at }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div>No transform entries found</div>
+    {% endif %}
+
+{% endblock %}
+
+{% block tail %}
+{{ super() }}
+    <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+    <script>
+        jQuery(document).ready(function($) {
+            $('#entry-table').DataTable({
+                "paging": true,
+                "ordering": true,
+                "info": false,
+                "searching": true,
+                "initComplete": function() {
+                    // Reference to the "Organization ID" column (index 2)
+                    var column = this.api().column(2);
+
+                    // Attach change event to the dropdown
+                    $('#org-id-filter').on('change', function() {
+                        var filterValue = $(this).val();
+                        column.search(filterValue).draw();
+                    });
+                    var statusColumn = this.api().column(5); // Index of "Status"
+                    $('#status-filter').on('change', function() {
+                        var value = $(this).val();
+                        statusColumn.search(value).draw();
+                    });
+                }
+            });
+        });
+    </script>
+{% endblock %}

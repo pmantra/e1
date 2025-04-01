@@ -1,0 +1,26 @@
+{% extends admin_base_template %}
+{% block body %}
+    <h3>Generate member records</h3>
+    <p>Please fill out the following form to generate member_versioned records.</p>
+    <p>Reach out to #help-eligibility-service if you have data needs that this feature doesn't cover.</p>
+    <br>
+    <form action="{{ url_for('membergenerationview.generate') }}" method="post">
+        <div class="form-group">
+            <label for="org-dropdown">Organization ID</label>
+            <select id="org-dropdown" name="org_id">
+              {% for org in orgs %}
+                <option value="{{ org.organization_id }}">{{ org.organization_id }}</option>
+              {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="batch-size-dropdown">Batch Size</label>
+            <select id="batch-size-dropdown" name="batch_size">
+              {% for option in batch_options %}
+                <option value="{{ option }}">{{ option }}</option>
+              {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary mb-2">Generate</button>
+    </form>
+{% endblock %}

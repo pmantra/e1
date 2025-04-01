@@ -1,0 +1,65 @@
+{% extends admin_base_template %}
+{% block head %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css"/>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.css"/>
+{% endblock %}
+
+{% block body %}
+    <h3>Transform Entry Details</h3>
+    {% if error %}
+    <div style="color: red; padding: 10px; border: 1px solid red; margin-bottom: 20px;">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    {% if records %}
+        <div class="panel panel-info" style="width: fit-content;position: relative;">
+            <div class="panel-heading">
+                <h4 class="panel-title">Transform Entry Records
+                </h4>
+            </div>
+            <div id="collapse" class="panel-info">
+                <div class="panel-body">
+                    <table class="table table-striped" id="details-table">
+                        <thead>
+                        <tr>
+                            <th scope="col">Data</th>
+                            <th scope="col">Details</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                            <tr>
+                                <td>{{ record.data }}</td>
+                                <td>{{ record.details }}</td>
+                                <td>{{ record.status }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div>No transform entry records found</div>
+    {% endif %}
+
+{% endblock %}
+
+{% block tail %}
+{{ super() }}
+    <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+    <script>
+        jQuery(document).ready(function($) {
+            $('#details-table').DataTable({
+                "paging": true,
+                "ordering": true,
+                "info": false,
+                "searching": true
+            });
+        });
+    </script>
+{% endblock %}

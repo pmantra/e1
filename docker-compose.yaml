@@ -1,0 +1,191 @@
+version: "3.9"
+
+secrets:
+  gitlab_token:
+    environment: "GITLAB_TOKEN"
+  gcloud_adc:
+    file: $HOME/.config/gcloud/application_default_credentials.json
+
+services:
+  eligibility-api:
+    image: eligibility-app:latest
+    container_name: eligibility-api
+    build:
+      context: .
+      dockerfile: dockerfiles/app.Dockerfile
+      secrets:
+        - gitlab_token
+        - gcloud_adc
+    depends_on:
+      - eligibility-db
+    entrypoint:
+      - "/.venv/bin/python"
+      - "main.py"
+    command:
+      - "api"
+    environment:
+      DB_MAIN_PORT: 5432
+      DB_READ_PORT: 5432
+      MONO_DB_HOST: mono-mysql
+      MONO_DB_PASSWORD: root
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcloud_adc
+    ports:
+      - "127.0.0.1:50051:50051"
+    profiles:
+      - mono
+      - all
+    networks:
+      - maven_default
+    secrets:
+      - gcloud_adc
+
+  eligibility-sync:
+    image: eligibility-app:latest
+    container_name: eligibility-sync
+    build:
+      context: .
+      dockerfile: dockerfiles/app.Dockerfile
+      secrets:
+        - gitlab_token
+        - gcloud_adc
+    depends_on:
+      - eligibility-db
+      - eligibility-migrations
+    entrypoint:
+      - "/.venv/bin/python"
+      - "main.py"
+    command:
+      - "sync"
+    environment:
+      DB_MAIN_PORT: 5432
+      DB_READ_PORT: 5432
+      MONO_DB_HOST: mono-mysql
+      MONO_DB_PASSWORD: root
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcloud_adc
+    profiles:
+      - mono
+      - all
+    networks:
+      - maven_default
+    secrets:
+      - gcloud_adc
+
+  eligibility-redis-master:
+    image: redis:alpine
+    container_name: eligibility-redis-master
+    restart: always
+    ports:
+    - "127.0.0.1:6379:6379"
+    expose:
+    - "6379"
+    profiles:
+      - eligibility
+      - all
+    networks:
+      - maven_default
+
+  eligibility-redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: eligibility-redis-insight
+    restart: always
+    ports:
+    - "127.0.0.1:8001:8001"
+    expose:
+    - "8001"
+    profiles:
+      - eligibility
+      - all
+    networks:
+      - maven_default
+
+  eligibility-db:
+    image: postgres:12.3
+    container_name: eligibility-db
+    restart: always
+    ports:
+    - "127.0.0.1:5432:5432"
+    expose:
+    - "5432"
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+      POSTGRES_DB: api
+      POSTGRES_USER: postgres
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcloud_adc
+    profiles:
+      - eligibility
+      - mono
+      - all
+    networks:
+      - maven_default
+    secrets:
+      - gcloud_adc
+
+  eligibility-mono-db:
+    image: amd64/mysql:5.6 
+    container_name: eligibility-mono-db
+    restart: always
+    ports:
+    - "127.0.0.1:3306:3306"
+    expose:
+    - "3306"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "1"
+      MYSQL_DATABASE: "maven"
+      MYSQL_ROOT_HOST: "%"
+    profiles:
+      - eligibility
+      - all
+    networks:
+      - maven_default
+
+  eligibility-migrations:
+    container_name: eligibility-migrations
+    image: eligibility-migrations:latest
+    build:
+      context: .
+      dockerfile: dockerfiles/migrations.Dockerfile
+      secrets:
+        - gcloud_adc
+    environment:
+      DATABASE_URL: "postgresql://postgres:@eligibility-db/api?sslmode=disable"
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcloud_adc
+    depends_on:
+    - eligibility-db
+    profiles:
+      - eligibility
+      - mono
+      - all
+    networks:
+      - maven_default
+    secrets:
+      - gcloud_adc
+
+  pubsub:
+    # https://console.cloud.google.com/gcr/images/google.com:cloudsdktool/GLOBAL/cloud-sdk?gcrImageListsize=30
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:339.0.0-emulators
+    container_name: pubsub
+    ports:
+    - "127.0.0.1:8085:8085"
+    entrypoint: gcloud beta emulators pubsub start --project=local-dev --host-port=0.0.0.0:8085
+    profiles:
+      - eligibility
+      - all
+    networks:
+      - maven_default
+
+#  dd-agent:
+#    image: datadog/agent
+#    container_name: dd-agent
+#    ports:
+#    - "127.0.0.1:8126:8126"
+#    environment:
+#      DD_PYTHON_VERSION: "3"
+#      DD_PROCESS_AGENT_ENABLED: "false"
+
+volumes:
+  .storage:
+    driver: local
+
+networks:
+    maven_default:
+      external: true

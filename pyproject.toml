@@ -1,0 +1,123 @@
+[tool.poetry]
+name = "eligibility"
+# do not bump the verison here, it is meaningless.
+# instead, bump it in VERSION.txt
+version = "0.1.0"
+description = ""
+packages = [
+    {include = "api"},
+    {include = "app"},
+    {include = "bin"},
+    {include = "config"},
+    {include = "db"},
+]
+authors = []
+
+[tool.poetry.scripts]
+eligibility = "bin.main:run"
+
+[[tool.poetry.source]]
+name = "gitlab"
+url = "https://gitlab.com/api/v4/projects/48160496/packages/pypi/simple"
+default = false
+secondary = false
+
+
+[[tool.poetry.source]]
+name = "pypi-mvn"
+url = "https://us-east1-python.pkg.dev/maven-clinic-image-builder/pypi-mvn/simple/"
+default = false
+secondary = false
+
+[tool.poetry.dependencies]
+python = "^3.9"
+# you will need to `poetry update mmlib` locally and recommit the lock file after changing this.
+# note: this embedded user and token is READ-ONLY user that only has pull access on the mmlib repo,
+# so it is considered fine to put in plaintext here.
+mmlib = "7.2.0"
+uvloop = "^0.16.0"
+flask = "^1.1.2"
+flask-admin = "^1.5.6"
+asyncpg = "^0.26.0"
+aiosql = "^3.2.0"
+orjson = "^3.4.1"
+cleo = "^0.8.1"
+typical = "^2.7"
+cryptography = "^3.4.8"
+google-cloud-kms = "^2.2.0"
+google-cloud-storage = "^1.33.0"
+pycryptodome = "^3.9.9"
+pycountry = "^20.7.3"
+cchardet = "^2.1.7"
+sqlalchemy = "1.4"
+python-dotenv = "^0.15.0"
+googleapis-common-protos = "^1.53.0"
+mmstream = {version = "^0.7.4", extras = ["pubsub", "redis"]}
+sh = "^1.14.2"
+aiohttp = {version = "^3.7.4", extras = ["speedups"]}
+msal = "^1.14.0"
+pgcli = "^3.3.1"
+aioresponses = "^0.7.3"
+aiodebug = "^2.3.0"
+psycopg2 = "^2.9.5"
+munch = "^4.0.0"
+grpclib = "^0.4.5"
+pyyaml = "^6.0.1"
+factory-boy = "^3.1.0"
+maven-sdk-feature-flags-python = {version = "^1.5.0", source = "pypi-mvn"}
+aiomysql = "^0.2.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "22.3.0"
+itsdangerous = "2.0.1"
+werkzeug = "2.0.3"
+pytest = "^6.0.2"
+Jinja2 = "^2.11.2"
+Markupsafe = "~2.0"
+colorama = "^0.4.4"
+isort = "^5.6.4"
+pre-commit = "^2.9.0"
+fakeredis = "^1.4.5"
+factory-boy = "^3.1.0"
+# https://github.com/grpc/grpc/pull/24911
+# Current version causes a segfault.
+grpcio-tools = "1.33.2"
+pytest-asyncio = "^0.14.0"
+flake8 = "^3.8.4"
+keyring = "^21.5.0"
+pytest-cov = "^2.11.1"
+
+[tool.black]
+# this is a regex *groan*
+extend-exclude = '''
+/(
+  api/protobufs/generated/python
+)/
+'''
+
+[tool.isort]
+profile = "black"
+src_paths = [
+    "admin",
+    "api",
+    "app",
+    "bin",
+    "db",
+    "runners",
+    "config",
+]
+known_first_party = [
+    "admin",
+    "api",
+    "app",
+    "bin",
+    "db",
+    "runners",
+    "config",
+    "constants",
+]
+known_third_party = ["flask"]
+
+[build-system]
+requires = ["poetry>=0.12", "cython"]
+build-backend = "poetry.masonry.api"

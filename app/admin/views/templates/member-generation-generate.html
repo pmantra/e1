@@ -1,0 +1,46 @@
+{% extends admin_base_template %}
+{% block body %}
+    <h3>Generate member records</h3>
+    {% if members_2 %}
+        <p>The following records were generated for both 1.0 and 2.0 - Please note that these records will be expired if a new census file is uploaded for this organization.</p>
+    {% else %}
+        <p>The following records were generated - Please note that these records will be expired if a new census file is uploaded for this organization.</p>
+    {% endif %}
+    <br>
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th scope="col">id</th>
+            <th scope="col">organization_id</th>
+            <th scope="col">first_name</th>
+            <th scope="col">last_name</th>
+            <th scope="col">email</th>
+            <th scope="col">date_of_birth</th>
+            <th scope="col">work_state</th>
+            <th scope="col">unique_corp_id</th>
+            <th scope="col">dependent_id</th>
+            <th scope="col">effective_range.start</th>
+            <th scope="col">effective_range.end</th>
+            <th scope="col">created_at</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for member in members %}
+            <tr>
+                <th scope="row">{{ member.id }}</th>
+                <td>{{ member.organization_id }}</td>
+                <td>{{ member.first_name }}</td>
+                <td>{{ member.last_name }}</td>
+                <td>{{ member.email }}</td>
+                <td>{{ member.date_of_birth }}</td>
+                <td>{{ member.work_state }}</td>
+                <td>{{ member.unique_corp_id }}</td>
+                <td>{{ member.dependent_id }}</td>
+                <td>{{ member.effective_range.lower }}</td>
+                <td>{{ member.effective_range.upper }}</td>
+                <td>{{ member.created_at }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

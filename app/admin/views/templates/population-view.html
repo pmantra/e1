@@ -1,0 +1,109 @@
+{% extends 'admin/master.html' %}
+
+{% set was_activated = True if population.activated_at and population.activated_at <= current_time else False %}
+{% set was_deactivated = True if population.deactivated_at and population.deactivated_at <= current_time else False %}
+{% set activation_class = "" %}
+<!-- Green: Was activated -->
+{% if was_activated %}
+    {% set activation_class = "e9y-green" %}
+{% endif %}
+<!-- Red: Was deactivated - overrides all other states -->
+{% if was_deactivated %}
+    {% set activation_class = "e9y-red" %}
+{% endif %}
+
+{% block head %}
+    {{ super() }}
+    <!-- populations CSS -->
+    <link href="{{ referrer_base_url }}{{url_for('static_e9y_file', path='css/populations.css')}}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+    {% if alert_msg %}
+    <!-- Alert area -->
+    <div class="alert alert-danger alert-dismissable">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        {{ alert_msg }}
+    </div>
+    {% endif %}
+
+    <!-- Navigation area -->
+    <ul class="nav nav-tabs actions-nav">
+        <li>
+            <a href="{{ url_for("population.population_list") }}">List</a>
+        </li>
+        <li>
+            <a href="{{ url_for("population.population_edit_by_population_id", population_id=population.id) }}">Edit</a>
+        </li>
+        <li class="active">
+            <a href="javascript:void(0)">Details</a>
+        </li>
+    </ul>
+
+    <!-- Heading area -->
+    <h2>
+        Population {{ population.id }}
+        <small><a href="{{ url_for("population.population_clone_by_population_id", population_id=population.id) }}">(Clone)</a></small>
+    </h2>
+    <h3 class="{{ activation_class }}">{% if was_deactivated %}This population has been deactivated{% elif was_activated %}This population is active{% else %}This population is not active yet{% endif %}</h3>
+
+    <!-- Table of population information -->
+    <table class="table table-hover table-bordered searchable">
+      <tr>
+        <td><b>Id</b></td>
+        <td>{{ population.id }}</td>
+      </tr>
+      <tr>
+        <td><b>Organization Id</b></td>
+        <td>{{ population.organization_id }}</td>
+      </tr>
+      <tr>
+        <td><b>Criteria</b></td>
+        <td>{{ population.sub_pop_lookup_keys_csv }}</td>
+      </tr>
+      <tr>
+        <td><b>Mapping</b></td>
+        <td>{{ population.sub_pop_lookup_map_json|tojson|forceescape }}</td>
+      </tr>
+      <tr>
+        <td><b>Active</b></td>
+        <td class="{{ activation_class }}">{{ population.active }}</td>
+      </tr>
+      <tr>
+        <td><b>Activated At</b></td>
+        <td class="{{ activation_class }}">{% if population.activated_at %}{{ population.activated_at }}{% endif %}</td>
+      </tr>
+      <tr>
+        <td><b>Deactivated At</b></td>
+        <td class="{{ activation_class }}">{% if population.deactivated_at %}{{ population.deactivated_at }}{% endif %}</td>
+      </tr>
+      <tr>
+        <td><b>Created At</b></td>
+        <td>{{ population.created_at }}</td>
+      </tr>
+      <tr>
+        <td><b>Updated At</b></td>
+        <td>{{ population.updated_at }}</td>
+      </tr>
+    </table>
+
+    <!-- Sub-population information -->
+    <h3>Sub-Populations</h3>
+    <table class="table table-hover table-bordered searchable">
+    {% for sub_pop in population.sub_populations %}
+      <tr>
+        <td><b>{{ sub_pop.feature_set_name }} ({{ sub_pop.id }})</b></td>
+        <td>{{ sub_pop.feature_set_details_json|tojson|forceescape }}</td>
+      </tr>
+    {% else %}
+        <tr>
+            <td colspan="999">
+                <div class="text-center">
+                    There are no items in the table.
+                </div>
+            </td>
+        </tr>
+    {% endfor %}
+    </table>
+    {{ super() }}
+{% endblock %}

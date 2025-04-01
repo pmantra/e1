@@ -1,0 +1,12 @@
+{% extends admin_base_template %}
+{% block body %}
+    <h3>Enterprise Verification Status</h3>
+    <p>Please enter the Maven UserID you wish to return verification info for.</p>
+    <br>
+    <form method="GET" onsubmit="this.action = {% set url = h.get_url("verification.details_view") %} + this.user_id.value;">
+            <label for="user_id">UserID:</label>
+           <input type="text" name="user_id" id="user_id" class="block"  /><br><br>
+           <input type="submit" />
+     </form>
+{% endblock %}
+

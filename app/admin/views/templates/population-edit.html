@@ -1,0 +1,281 @@
+{% extends 'admin/master.html' %}
+
+{% set was_activated = True if population.activated_at and population.activated_at <= current_time else False %}
+{% set was_deactivated = True if population.deactivated_at and population.deactivated_at <= current_time else False %}
+{% set activation_class = "" %}
+<!-- Green: Was activated -->
+{% if was_activated %}
+    {% set activation_class = "e9y-green" %}
+{% endif %}
+<!-- Red: Was deactivated - overrides all other states -->
+{% if was_deactivated %}
+    {% set activation_class = "e9y-red" %}
+{% endif %}
+
+{% block head %}
+    {{ super() }}
+
+    <!-- flask-admin CSS -->
+    <link href="{{ referrer_base_url }}/eligibility-admin/static/vendor/select2/select2.css?v=3.5.2" rel="stylesheet">
+    <link href="{{ referrer_base_url }}/eligibility-admin/static/vendor/select2/select2-bootstrap3.css?v=1.4.6" rel="stylesheet">
+    <link href="{{ referrer_base_url }}/eligibility-admin/static/vendor/bootstrap-daterangepicker/daterangepicker-bs3.css?v=1.3.22" rel="stylesheet">
+
+    <!-- populations CSS -->
+    <link href="{{ referrer_base_url }}{{url_for('static_e9y_file', path='css/populations.css')}}" rel="stylesheet">
+
+    <!-- Populations JS -->
+    <script>
+        // The global variable definitions
+        const globalWasActivated = {{ was_activated|lower }};
+        const globalWasDeactivated = {{ was_deactivated|lower }};
+
+        // The global structures that power the Populations JavaScript
+        let globalCriteriaMap = null;
+        let globalAttributeCriteriaList = null;
+    </script>
+{% endblock %}
+
+{% block body %}
+    {% if alert_msg %}
+    <!-- Alert area -->
+    <div class="alert alert-danger alert-dismissable">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        {{ alert_msg }}
+    </div>
+    {% endif %}
+
+    <!-- Navigation area -->
+    <ul class="nav nav-tabs actions-nav">
+        <li>
+            <a href="{{ url_for("population.population_list") }}">List</a>
+        </li>
+        <li class="active">
+            <a href="javascript:void(0)">Edit</a>
+        </li>
+        {% if edit_type == "edit_existing" %}
+        <li>
+            <a href="{{ url_for("population.population_view_by_population_id", population_id=population.id) }}">Details</a>
+        </li>
+        {% endif %}
+    </ul>
+
+    <!-- Heading area -->
+    <h2>
+        {% if edit_type.startswith("edit_new") %}New {% endif %}Population{% if edit_type == "edit_existing" %} {{ population.id }}{% endif %}
+        {% if edit_type == "edit_existing" %}<small><a href="{{ url_for("population.population_clone_by_population_id", population_id=population.id) }}">(Clone)</a></small>{% endif %}
+    </h2>
+    <h3 class="{{ activation_class }}">{% if was_deactivated %}This population has been deactivated{% elif was_activated %}This population is active{% else %}This population is not active yet{% endif %}</h3>
+
+    <!-- Form to edit population -->
+    <form action="{{ url_for("population.population_save") }}" method="POST" role="form" class="admin-form form-horizontal" enctype="multipart/form-data" onsubmit="return handleEditFormOnSubmit()">
+        <input id="population_id" name="population_id" type="hidden" value="{{ population.id }}">
+        <input id="edit_type" name="edit_type" type="hidden" value="{{ edit_type }}">
+        <input id="was_activated" name="was_activated" type="hidden" value="{% if was_activated %}on{% else %}off{% endif %}">
+        <input id="was_deactivated" name="was_deactivated" type="hidden" value="{% if was_deactivated %}on{% else %}off{% endif %}">
+        <input id="track_count" name="track_count" type="hidden" value="{{ client_tracks|length }}">
+        <div class="form-group">
+            <label class="col-md-2 control-label">Organization Id &nbsp;</label>
+            <div class="col-md-10">
+                <input class="form-control" disabled id="organization_id_display" name="organization_id_display" type="number" value="{{ population.organization_id }}">
+                <input id="organization_id" name="organization_id" type="hidden" value="{{ population.organization_id }}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">Criteria &nbsp;</label>
+            <div class="col-md-10">
+                <textarea class="form-control" readonly id="sub_pop_lookup_keys_csv" name="sub_pop_lookup_keys_csv">{% if population.sub_pop_lookup_keys_csv %}{{ population.sub_pop_lookup_keys_csv }}{% endif %}</textarea>
+            </div>
+            <label class="col-md-2 control-label">&nbsp;</label>
+            <div class="col-md-10">
+                <datalist id="attribute_name_suggestions">
+                </datalist>
+                <table class="table table-bordered" id="attributes_table"></table>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">Mapping &nbsp;</label>
+            <div class="col-md-10">
+                <textarea class="form-control" readonly id="sub_pop_lookup_map_json" name="sub_pop_lookup_map_json">{% if population.sub_pop_lookup_map_json %}{{ population.sub_pop_lookup_map_json|tojson|forceescape }}{% endif %}</textarea>
+            </div>
+            <label class="col-md-2 control-label">&nbsp;</label>
+            <div class="col-md-10">
+                <table class="table table-striped table-bordered table-hover" id="mapping_table" name="mapping_table"></table>
+            </div>
+        </div>
+        <!-- TODO: Dynamically set advanced based on the sub_pop_lookup_map_json -->
+        <input id="advanced" name="advanced" type="hidden" value="on">
+        <div class="form-group">
+            <label class="col-md-2 control-label">Activated At &nbsp;</label>
+            <div class="col-md-10">
+                <input class="form-control" data-date-format="YYYY-MM-DD HH:mm:ss" data-role="datetimepicker" {% if was_activated %}disabled {% endif %}id="activated_at" name="activated_at" type="text" value="{% if population.activated_at %}{{ population.activated_at }}{% endif %}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">Deactivated At &nbsp;</label>
+            <div class="col-md-10">
+                <input class="form-control" data-date-format="YYYY-MM-DD HH:mm:ss" data-role="datetimepicker" {% if was_deactivated %}disabled {% endif %}id="deactivated_at" name="deactivated_at" type="text" value="{% if population.deactivated_at %}{{ population.deactivated_at }}{% endif %}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">SubPopulation &nbsp;</label>
+            <div class="col-md-10">
+                <div class="inline-field" id="sub_populations">
+                    <div class="inline-field-list">
+                        {% for sub_pop in population.sub_populations %}
+                            {% set sub_pop_index = loop.index0 %}
+                            <div id="sub_populations-{{ sub_pop_index }}" class="inline-field well well-sm">
+                                <legend>
+                                    <small>
+                                        {% if not sub_pop.id %}New {% endif %}SubPopulation{% if sub_pop.id %} {{ sub_pop.id }}{% endif %}
+                                        {% if sub_pop.id and not was_activated %}
+                                        <div class="pull-right">
+                                            <input type="checkbox" name="del-sub_populations-{{ sub_pop_index }}" id="del-sub_populations-{{ sub_pop_index }}" onclick="handleSubPopulationRemoveOnClick(this)"/>
+                                            <label for="del-sub_populations-{{ sub_pop_index }}" style="display: inline">Delete?</label>
+                                        </div>
+                                        {% elif not sub_pop.id %}
+                                        <div class="pull-right">
+                                            <div onclick="handleSubPopulationRemoveOnClick(this, true)" id="sub_populations-{{ sub_pop_index }}-remove" name="sub_populations-{{ sub_pop_index }}-remove"><span class="fa fa-times glyphicon glyphicon-remove"></span></div>
+                                        </div>
+                                        {% endif %}
+                                    </small>
+                                </legend>
+
+                                {% set sub_pop_ros = "" %}
+                                {% set sub_pop_tracks = [] %}
+                                {% set sub_pop_details = sub_pop.feature_set_details_json %}
+                                <input type="hidden" id="sub_populations-{{ sub_pop_index }}-feature_set_details_json" name="sub_populations-{{ sub_pop_index }}-feature_set_details_json" value="{{ sub_pop.feature_set_details_json|tojson|forceescape }}">
+                                {% if sub_pop_details %}
+                                    {% set sub_pop_ros = sub_pop_details["2"] %}
+                                    {% if sub_pop_details["1"] %}
+                                        {% set sub_pop_tracks = sub_pop_details["1"].split(",") %}
+                                    {% endif %}
+                                {% endif %}
+                                <div class="inline-form-field sub_population_container">
+                                    <input class="sub_population_id" id="sub_populations-{{ sub_pop_index }}-id" name="sub_populations-{{ sub_pop_index }}-id" type="hidden" value="{% if sub_pop.id %}{{ sub_pop.id }}{% endif %}">
+                                    <div class="form-group">
+                                        <label class="col-md-2 control-label">Name &nbsp;</label>
+                                        <div class="col-md-10">
+                                            <input type="text" class="form-control sub_population_name" {% if was_activated %}disabled {% endif %}id="sub_populations-{{ sub_pop_index }}-feature_set_name" name="sub_populations-{{ sub_pop_index }}-feature_set_name" onchange="handleSubPopulationNameOnChange(this{% if edit_type == "edit_new_clone" %}, true{% endif %})" value="{{ sub_pop.feature_set_name }}" data-prev-value="{{ sub_pop.feature_set_name }}">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-md-2 control-label">Reimbursement Organization Settings &nbsp;</label>
+                                        <div class="col-md-10">
+                                            <select class="form-control" {% if not reimbursement_organization_settings %}disabled {% endif %}id="sub_populations-{{ sub_pop_index }}-ros" name="sub_populations-{{ sub_pop_index }}-ros">
+                                                <option value=""{% if sub_pop_ros|string == "" %} selected{% endif %}>None</option>
+                                                {% if reimbursement_organization_settings %}
+                                                    {% for settings in reimbursement_organization_settings %}
+                                                        <option value="{{ settings.id }}"{% if sub_pop_ros|string == settings.id|string %} selected{% endif %}>{{ settings.descriptor }}</option>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-md-2 control-label">Client Tracks &nbsp;</label>
+                                        <div class="col-md-10">
+                                            {% if client_tracks %}
+                                                {% for track in client_tracks %}
+                                                    {% set track_index = loop.index0 %}
+                                                    <input type="checkbox" {% if was_activated %}disabled {% endif %}id="sub_populations-{{ sub_pop_index }}-track-{{ track_index }}" name="sub_populations-{{ sub_pop_index }}-track-{{ track_index }}" value="{{ track.id }}"{% if track.id|string in sub_pop_tracks %} checked{% endif %}>&nbsp;{{ track.descriptor }}<br>
+                                                {% endfor %}
+                                            {% else %}
+                                                There are no client tracks.<br>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% if not was_activated %}
+                    <!-- Template to define sub-population GUI -->
+                    <div class="inline-field-template hide">
+                        &lt;div class=&#34;inline-field well well-sm&#34;&gt;
+                            &lt;legend&gt;
+                                &lt;small&gt;New SubPopulation&lt;/small&gt;
+                                &lt;div class=&#34;pull-right&#34;&gt;
+                                    &lt;div onclick=&#34;handleSubPopulationRemoveOnClick(this, true)&#34; id=&#34;remove&#34; name=&#34;remove&#34;&gt;&lt;span class=&#34;fa fa-times glyphicon glyphicon-remove&#34;&gt;&lt;/span&gt;&lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/legend&gt;
+                            &lt;input type=&#34;hidden&#34; id=&#34feature_set_details_json&#34; name=&#34;feature_set_details_json&#34; value=&#34;{}&#34;&gt;
+                            &lt;div class=&#39;clearfix&#39;&gt;&lt;/div&gt;
+                            &lt;div class=&#34;inline-form-field sub_population_container&#34;&gt;
+                                &lt;input class=&#34;sub_population_id&#34; id=&#34;id&#34; name=&#34;id&#34; type=&#34;hidden&#34; value=&#34;&#34;&gt;
+                                &lt;div class=&#34;form-group&#34;&gt;
+                                    &lt;label for=&#34;feature_set_name&#34; class=&#34;col-md-2 control-label&#34;&gt;Name
+                                        &amp;nbsp;
+                                    &lt;/label&gt;
+                                    &lt;div class=&#34;col-md-10&#34;&gt;
+                                        &lt;input type=&#34;text&#34; class=&#34;form-control sub_population_name&#34; id=&#34;feature_set_name&#34; name=&#34;feature_set_name&#34; onchange=&#34;handleSubPopulationNameOnChange(this, true)&#34; value=&#34;&#34;&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                                &lt;div class=&#34;form-group&#34;&gt;
+                                    &lt;label class=&#34;col-md-2 control-label&#34;&gt;Reimbursement Organization Settings &nbsp;&lt;/label&gt;
+                                    &lt;div class=&#34;col-md-10&#34;&gt;
+                                        &lt;select class=&#34;form-control&#34; {% if not reimbursement_organization_settings %}disabled {% endif %}id=&#34;ros&#34; name=&#34;ros&#34;&gt;
+                                            &lt;option value=&#34;&#34; selected&gt;None&lt;/option&gt;
+                                            {% if reimbursement_organization_settings %}
+                                                {% for settings in reimbursement_organization_settings %}
+                                                    &lt;option value=&#34;{{ settings.id }}&#34;&gt;{{ settings.descriptor }}&lt;/option&gt;
+                                                {% endfor %}
+                                            {% endif %}
+                                        &lt;/select&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                                &lt;div class=&#34;form-group&#34;&gt;
+                                    &lt;label class=&#34;col-md-2 control-label&#34;&gt;Client Tracks &nbsp;&lt;/label&gt;
+                                    &lt;div class=&#34;col-md-10&#34;&gt;
+                                        {% if client_tracks %}
+                                            {% for track in client_tracks %}
+                                                {% set track_index = loop.index0 %}
+                                                &lt;input type=&#34;checkbox&#34; id=&#34;track-{{ track_index }}&#34; name=&#34;track-{{ track_index }}&#34; value=&#34;{{ track.id }}&#34;&gt;&nbsp;{{ track.descriptor }}&lt;br&gt;
+                                            {% endfor %}
+                                        {% else %}
+                                            There are no client tracks.&lt;br&gt;
+                                        {% endif %}
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                    </div>
+                    <a id="sub_populations-button" href="javascript:void(0)" class="btn btn-default" onclick="faForm.addInlineField(this, 'sub_populations');">Add SubPopulation</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <hr>
+        <div class="form-group">
+            <!-- Submit buttons -->
+            <div class="col-md-offset-2 col-md-10 submit-row">
+                <input type="submit" class="btn btn-primary" value="Save" />
+                <input name="_continue_editing" type="submit" class="btn btn-default" value="Save and Continue Editing" />
+                <a href="{{ url_for("population.population_list") }}" class="btn btn-danger" role="button" >Cancel</a>
+            </div>
+        </div>
+    </form>
+
+    {{ super() }}
+{% endblock %}
+{% block tail %}
+    <!-- flask-admin JS -->
+    <script src="{{ referrer_base_url }}/eligibility-admin/static/vendor/bootstrap-daterangepicker/daterangepicker.js?v=1.3.22"></script>
+    <script src="{{ referrer_base_url }}/eligibility-admin/static/admin/js/form.js?v=1.0.1"></script>
+
+    <!-- populations JS -->
+    <script src="{{ referrer_base_url }}{{url_for('static_e9y_file', path='js/populations.js')}}"></script>
+    <script>
+        // The structures that power the Populations JavaScript
+        globalCriteriaMap = createCriteriaMapFromObj({{ population.sub_pop_lookup_map_json|tojson }});
+        globalAttributeCriteriaList = createAttributeCriteriaList(
+            {% if population.sub_pop_lookup_keys_csv|length > 0 %}
+            {{ population.sub_pop_lookup_keys_csv.split(",")|tojson }},
+            {% else %}
+            [],
+            {% endif %}
+            globalCriteriaMap
+        );
+        propagateAttributesChange();
+        overrideDateTimeEnterHandlers();
+    </script>
+{% endblock %}

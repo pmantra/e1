@@ -1,0 +1,264 @@
+{% extends admin_base_template %}
+{% block body %}
+    {% if verification_needs_attention  %}
+            <h3 style="background-color:#F6FE6A;">Enterprise Verification Status: Verification Needs Attention</h3>
+            {% else %}
+                <h3>Enterprise Verification Status </h3>
+    {% endif %}
+    <h3>User ID: {{ user_id }}</h3>
+    <p>
+
+    <h4>Active verification? {% if user_has_active_verification %}Yes{% else %}No{% endif %}</h4>
+    <h4>Active E9y Record? {% if user_has_active_e9y_record %}Yes{% else %}No{% endif %}</h4>
+    </p>
+    {% if verifications %}
+        <div class="panel panel-info" style="width: fit-content;position: relative;">
+            <div class="panel-heading">
+                <h4 class="panel-title">Verifications
+                </h4>
+            </div>
+            <div id="collapse" class="panel-info">
+                <div class="panel-body">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th scope="col">Verification ID</th>
+                            <th scope="col">Verification Errors?</th>
+                            <th scope="col">Active Verification?</th>
+                            <th scope="col">Active E9y Record?</th>
+                            <th scope="col">Verification Type</th>
+                            <th scope="col">E9Y Member Record</th>
+                            <th scope="col">Member Record Effective Range</th>
+                            <th scope="col">Organization ID</th>
+                            <th scope="col">First Name</th>
+                            <th scope="col">Last Name</th>
+                            <th scope="col">Unique Corp ID</th>
+                            <th scope="col">Dependent ID</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Date of Birth</th>
+                            <th scope="col">Work State</th>
+                            <th scope="col">Additional Fields</th>
+                            <th scope="col">Verified At</th>
+                            <th scope="col">Deactivated At</th>
+                            <th scope="col">Created At</th>
+                            <th scope="col">Updated At</th>
+                            <th scope="col">Verification Session</th>
+                            <th scope="col">Verification 2.0 ID</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <!-- custom color the background on our verifications -->
+                        {% for v in verifications %}
+                            <!-- create alert if the verification needs to be deactivated at due to error -->
+                            {% if v.member_id and not v.active_e9y_record and not v.deactivated_at %}
+                                <tr style="background-color:#F6FE6A">
+                             <!-- otherwise color it green -->
+                            {% elif not v.deactivated_at %}
+                                <tr style="background-color:#e9ffe3">
+                             <!-- if deactivated, color it red -->
+                            {% else %}
+                                <tr style="background-color:#FFE3DD">
+                            {% endif %}
+                        <td>{% set url = h.get_url("verification.details_view", id=v.id) %}
+                            <a href="{{ url }}" target="_blank">{{ v.id }}</a>
+                        </td>
+                        <td>
+                        {% if v.error_status %}
+                             {{ v.error_status }}
+                        {%  else %}
+                            None
+                        {%  endif %}
+                            {% if not v.deactivated_at %}
+                                <form action="" method="post" value={{ v.id }},
+                                      onsubmit="return confirm('Are you sure you want to deactivate verification {{ v.id }}?');">
+                                    <input class="{{ 'btn btn-danger' if v.error_status else 'btn btn-warning' }}"
+                                           type="submit"
+                                           value="Deactivate Verification"
+                                           name={{ v.id }}>
+                                </form>
+                            {% endif %}
+                        </td>
+                        <!-- Active Verification Icon-->
+                        {% if not v.deactivated_at %}
+                            <td><b><span class="glyphicon glyphicon-check"></span></b></td>
+                        {% else %}
+                            <td><span class="glyphicon glyphicon-ban-circle"></span></td>
+                        {% endif %}
+                        <!-- Active E9y Record Icon-->
+                        {% if not v.member_id %}
+                            <td><b>N/A</b></td>
+                        {% elif v.active_e9y_record %}
+                            <td><b><span class="glyphicon glyphicon-check"></span></b></td>
+                        {% else %}
+                            <td><span class="glyphicon glyphicon-ban-circle"></span></td>
+                        {% endif %}
+
+                        <td>{{ v.verification_type }}</td>
+                        <td>{% if v.member_id %}
+                                {% set url = h.get_url("member_versioned.details_view", id=v.member_id) %}
+                                <a href="{{ url }}" target="_blank">{{ v.member_id }}</a>
+                            {%  else %}
+                                None
+                            {%  endif %}
+                        </td>
+                        <td>
+                        {% if v.member_effective_range %}
+                            {{ v.member_effective_range}}
+                        {% else %}
+                            None
+                        {% endif %}
+                         </td>
+                            <td>
+                            <a href="{{ h.get_url("configuration.details_view", id=v.organization_id) }}"
+                               target="_blank">
+                                {{ v.organization_id }}
+                            </a>
+                        </td>
+                        <td>{{ v.first_name }}</td>
+                        <td>{{ v.last_name }}</td>
+                        <td>{{ v.unique_corp_id }}</td>
+                        <td>{{ v.dependent_id }}</td>
+                        <td>{{ v.email }}</td>
+                        <td>{{ v.date_of_birth }}</td>
+                        <td>{{ v.work_state }}</td>
+                        <td>{{ v.additional_fields }}</td>
+                        {% if v.verified_at %}
+                            <td>{{ v.verified_at.strftime("%m/%d/%Y, %H:%M:%S") }}</td>
+                        {% else %}
+                            <td></td>
+                        {% endif %}
+                        {% if v.deactivated_at %}
+                            <td>{{ v.deactivated_at.strftime("%m/%d/%Y, %H:%M:%S") }}</td>
+                        {% else %}
+                            <td></td>
+                        {% endif %}
+                        <td>
+                            {% if v.member_created_at %}
+                                {{ v.member_created_at.strftime("%m/%d/%Y, %H:%M:%S") }}
+                            {% else %}
+                                {{ v.created_at.strftime("%m/%d/%Y, %H:%M:%S") }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if v.member_updated_at %}
+                                {{ v.member_updated_at.strftime("%m/%d/%Y, %H:%M:%S") }}
+                            {% else %}
+                                {{ v.updated_at.strftime("%m/%d/%Y, %H:%M:%S") }}
+                            {% endif %}
+                        </td>
+                        <td>{{ v.verification_session }}</td>
+                        <td>{{ v.verification_2_id }}</td>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div>No successful verifications found</div>
+    {% endif %}
+
+    {% if verification_attempts %}
+        <div class="panel panel-info" style="width: fit-content;position: relative;">
+            <div class="panel-heading">
+                <h4 class="panel-title">Verification Attempts
+                </h4>
+            </div>
+            <div id="collapse" class="panel-info">
+                <div class="panel-body">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th scope="col">Verification Attempt ID</th>
+                            <th scope="col">Verification ID</th>
+                            <th scope="col">Successful Verification</th>
+                            <th scope="col">Verification Type</th>
+                            <th scope="col">E9Y Member Record</th>
+                            <th scope="col">Organization ID</th>
+                            <th scope="col">First Name</th>
+                            <th scope="col">Last Name</th>
+                            <th scope="col">Unique Corp ID</th>
+                            <th scope="col">Dependent ID</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Date of Birth</th>
+                            <th scope="col">Work State</th>
+                            <th scope="col">Additional Fields</th>
+                            <th scope="col">Verified At</th>
+                            <th scope="col">Created At</th>
+                            <th scope="col">Updated At</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for va in verification_attempts %}
+                            {% if va.successful_verification %}
+                                <tr style="background-color:#e9ffe3">
+                                    {% else %}
+                                <tr style="background-color:#FFE3DD">
+                            {% endif %}
+                        <td>{% set url = h.get_url("verification_attempt.details_view", id=va.id) %}
+                            <a href="{{ url }}" target="_blank">{{ va.id }}</a></td>
+                        <td>{% if va.verification_id %}
+                            {% set url = h.get_url("verification.details_view", id=va.verification_id) %}
+                            <a href="{{ url }}" target="_blank">{{ va.verification_id }}</a></td>
+                        {% else %} None
+                        {% endif %}
+                        {% if va.successful_verification %}
+                            <td><b><span class="glyphicon glyphicon-check"></span></b></td>
+                        {% else %}
+                            <td><span class="glyphicon glyphicon-ban-circle"></span></td>
+                        {% endif %}
+                        <td>{{ va.verification_type }}</td>
+                        <td>
+                            {% if va.memberverifications_collection and va.memberverifications_collection[0].member_id %}
+                                {% set url = h.get_url("member_versioned.details_view", id=va.memberverifications_collection[0].member_id) %}
+                                <a href="{{ url }}"
+                                   target="_blank">{{ va.memberverifications_collection[0].member_id }}</a>
+                            {% else %}None
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if va.organization_id %}
+                                <a href="{{ h.get_url("configuration.details_view", id=va.organization_id) }}"
+                                   target="_blank">
+                                    {{ va.organization_id }}
+                                </a>
+                            {% else %}None
+                            {% endif %}
+                        </td>
+                        <td>{{ va.first_name }}</td>
+                        <td>{{ va.last_name }}</td>
+                        <td>{{ va.unique_corp_id }}</td>
+                        <td>{{ va.dependent_id }}</td>
+                        <td>{{ va.email }}</td>
+                        <td>{{ va.date_of_birth }}</td>
+                        <td>{{ va.work_state }}</td>
+                        <td>{{ va.additional_fields }}</td>
+                        {% if va.verified_at %}
+                            <td>{{ va.verified_at.strftime("%m/%d/%Y, %H:%M:%S") }}</td>
+                        {% else %}
+                            <td></td>
+                        {% endif %}
+                        <td>
+                        {% if va.memberverifications_collection %}
+                            {{ va.memberverifications_collection[0].created_at.strftime("%m/%d/%Y, %H:%M:%S") }}
+                        {% else %}
+                            {{ va.created_at.strftime("%m/%d/%Y, %H:%M:%S") }}
+                        {% endif %}
+                        </td>
+                        <td>
+                        {% if va.memberverifications_collection %}
+                            {{ va.memberverifications_collection[0].updated_at.strftime("%m/%d/%Y, %H:%M:%S") }}
+                        {% else %}
+                            {{ va.updated_at.strftime("%m/%d/%Y, %H:%M:%S") }}
+                        {% endif %}
+                        </td>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div>No verification attempts found</div>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,2 @@
+deploy:
+  - ./okteto-deploy.sh
